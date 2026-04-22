@@ -15,6 +15,10 @@ class Request(BaseModel):
     prompt: str
     use_case: str
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 @app.get("/metrics")
 def metrics():
     import json
@@ -23,7 +27,7 @@ def metrics():
     blocked = 0
 
     try:
-        with open("logs.jsonl", "r") as f:
+        with open("ai_usage_logs.jsonl", "r") as f:
             for line in f:
                 entry = json.loads(line)
                 if entry["decision"] == "allowed":
@@ -37,3 +41,20 @@ def metrics():
         "allowed": allowed,
         "blocked": blocked
     }
+
+@app.post("/generate")
+def generate(req: Request, x_api_key: str = Header(...)):
+    verify_key(x_api_key)
+
+    decision, reason = validate_prompt(req.prompt)
+
+    if decision == "blocked":
+        log_request(req.user, req.prompt, None, decision, reason, req.use_case)
+        return {"status": "blocked", "reason": reason}
+
+    response = f"Generated response for: {req.prompt}"
+    filtered = filter_output(response)
+
+    log_request(req.user, req.prompt, filtered, "allowed", None, req.use_case)
+
+    return {"status": "allowed", "response": filtered}
