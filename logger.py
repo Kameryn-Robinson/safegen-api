@@ -12,5 +12,5 @@ def log_request(user, prompt, response, decision, reason, use_case):
         "use_case": use_case
     }
 
-with open("ai_usage_logs.jsonl", "a") as f:
+    with open("ai_usage_logs.jsonl", "a") as f:
         f.write(json.dumps(log) + "\n")
