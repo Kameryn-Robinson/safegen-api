@@ -15,23 +15,25 @@ class Request(BaseModel):
     prompt: str
     use_case: str
 
-@app.get("/health")
-def health():
-    return {"status": "ok"}
+@app.get("/metrics")
+def metrics():
+    import json
 
-@app.post("/generate")
-def generate(req: Request, x_api_key: str = Header(...)):
-    verify_key(x_api_key)
+    allowed = 0
+    blocked = 0
 
-    if decision == "blocked":
-        log_request(req.user, req.prompt, None, decision, reason, req.use_case)
-        return {"status": "blocked", "reason": reason}
+    try:
+        with open("logs.jsonl", "r") as f:
+            for line in f:
+                entry = json.loads(line)
+                if entry["decision"] == "allowed":
+                    allowed += 1
+                elif entry["decision"] == "blocked":
+                    blocked += 1
+    except FileNotFoundError:
+        return {"allowed": 0, "blocked": 0}
 
-    # Fake LLM response (simulate Bedrock)
-    response = f"Generated response for: {req.prompt}"
-
-    filtered = filter_output(response)
-
-    log_request(req.user, req.prompt, filtered, "allowed", None, req.use_case)
-
-    return {"status": "allowed", "response": filtered}
+    return {
+        "allowed": allowed,
+        "blocked": blocked
+    }
