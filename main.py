@@ -1,9 +1,14 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 from guardrails import validate_prompt, filter_output
 from logger import log_request
 
 app = FastAPI()
+API_KEY = "mysecretkey"
+
+def verify_key(x_api_key: str):
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
 class Request(BaseModel):
     user: str
@@ -15,8 +20,8 @@ def health():
     return {"status": "ok"}
 
 @app.post("/generate")
-def generate(req: Request):
-    decision, reason = validate_prompt(req.prompt)
+def generate(req: Request, x_api_key: str = Header(...)):
+    verify_key(x_api_key)
 
     if decision == "blocked":
         log_request(req.user, req.prompt, None, decision, reason, req.use_case)
