@@ -8,19 +8,25 @@ def validate_prompt(prompt: str):
 
 import re
 
+# Group words by "Strictness"
+STRICT_BLOCKS = ["hack", "bypass"]   # Always block
+CONTEXTUAL_BLOCKS = ["illegal"]      # Block only if certain conditions met
+
 def validate_prompt(prompt: str):
-    triggered_policies = set()
-    violations = []
+    prompt_lower = prompt.lower()
 
-    for policy, words in POLICIES.items():
-        for word in words:
-            pattern = rf"\b{re.escape(word)}\b"
-            if re.search(pattern, prompt, re.IGNORECASE):
-                violations.append(word)
-                triggered_policies.add(policy)
+    # 1. Strict Blocks (No exceptions)
+    for word in STRICT_BLOCKS:
+        pattern = rf"\b{re.escape(word)}\b"
+        if re.search(pattern, prompt_lower, re.IGNORECASE):
+            return "blocked", f"Strict Policy Violation: {word}"
 
-    if violations:
-        policy_str = ", ".join(triggered_policies)
-        return "blocked", f"Policy Violation [{policy_str}]: Restricted keywords found: {', '.join(violations)}"
+    # 2. Contextual Blocks (Allow if it looks like a question)
+    for word in CONTEXTUAL_BLOCKS:
+        pattern = rf"\b{re.escape(word)}\b"
+        if re.search(pattern, prompt_lower, re.IGNORECASE):
+            if prompt_lower.strip().endswith("?"):
+                return "allowed", None
+            return "blocked", f"Policy Violation: {word}"
 
     return "allowed", None
